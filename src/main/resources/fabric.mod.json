@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "fukkit2",
+  "version": "${version}",
+  "name": "Fukkit2",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/fukkit2/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "xyz.wagyourtail.fukkit2.client.Fukkit2Client"
+    ],
+    "main": [
+      "xyz.wagyourtail.fukkit2.Fukkit2"
+    ],
+    "mm:early_risers": [
+      "xyz.wagyourtail.fukkit2.FukkitEarlyRiser"
+    ],
+    "preLaunch": [
+      "xyz.wagyourtail.fukkit2.FukkitEarlyRiser"
+    ]
+  },
+  "mixins": [
+    "fukkit2.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.14.12",
+    "minecraft": "1.19.3"
+  }
+}
