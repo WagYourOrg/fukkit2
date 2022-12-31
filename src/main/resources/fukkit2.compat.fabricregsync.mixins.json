@@ -1,0 +1,10 @@
+{
+  "parent": "fukkit2.mixins.json",
+  "package": "xyz.wagyourtail.fukkit2.compat.fabricregistrysync.mixin",
+  "plugin": "xyz.wagyourtail.fukkit2.compat.fabricregistrysync.RegistrySyncMixinPlugin",
+  "mixins": [
+    "BootstrapMixin",
+    "BuiltInRegistriesMixin",
+    "MappedRegistryMixin"
+  ]
+}

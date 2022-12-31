@@ -1,5 +1,6 @@
 package xyz.wagyourtail.fukkit2;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
@@ -32,7 +33,7 @@ public class PaperPatcher extends AbstractBukkitPatcher {
         setEntrypoint(paperclip);
         // get patched jar
         patched = tempDir.resolve("versions/" + mcVersion + "/paper-" + mcVersion + ".jar");
-        remap(patched, null);
+        remap(patched, FabricLoader.getInstance().getGameDir().resolve("plugins"));
         createServerExtra();
         patchRuntime();
         addLibraries(paperclip);

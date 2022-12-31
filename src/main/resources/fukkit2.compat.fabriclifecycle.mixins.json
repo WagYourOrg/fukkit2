@@ -1,0 +1,9 @@
+{
+  "parent": "fukkit2.mixins.json",
+  "package": "xyz.wagyourtail.fukkit2.compat.fabriclifecycle.mixin",
+  "plugin": "xyz.wagyourtail.fukkit2.compat.fabriclifecycle.LifecycleMixinPlugin",
+  "mixins": [
+    "LivingEntityMixin",
+    "WorldChunkMixin"
+  ]
+}

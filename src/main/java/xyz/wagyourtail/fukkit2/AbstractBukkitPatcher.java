@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
 import net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider;
+import net.fabricmc.loader.impl.util.Arguments;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.format.CsrgReader;
 import net.fabricmc.mappingio.format.Tiny2Writer;
@@ -21,7 +22,6 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.nio.file.FileSystem;
@@ -29,6 +29,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipOutputStream;
 
@@ -61,6 +62,11 @@ public abstract class AbstractBukkitPatcher {
         entrypoint.setAccessible(true);
         MinecraftGameProvider provider = (MinecraftGameProvider) FabricLoaderImpl.INSTANCE.getGameProvider();
         entrypoint.set(provider, this.entrypoint);
+        Field arguments = MinecraftGameProvider.class.getDeclaredField("arguments");
+        arguments.setAccessible(true);
+        Arguments args = (Arguments) arguments.get(provider);
+        args.addExtraArg("--plugins");
+        args.addExtraArg(remappedPlugins.toAbsolutePath().toString());
         LOGGER.info("Set entrypoint to {}", this.entrypoint);
     }
 
@@ -78,30 +84,28 @@ public abstract class AbstractBukkitPatcher {
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     if (file.toString().endsWith(".class")) {
                         if (FukkitEarlyRiser.class.getClassLoader().getResourceAsStream(file.toString()) != null) {
-                            ClassTinkerers.addReplacement(file.toString().replace(".class", ""), (classNode) -> {
+                            // idk why skipping this makes it work
+                            if (file.toString().endsWith("EntityTypeTest.class")) return FileVisitResult.CONTINUE;
+                            ClassTinkerers.addTransformation(file.toString().replace(".class", ""), (classNode) -> {
                                 try (FileSystem fs = openZipFileSystem(remappedBukkit)) {
                                     var reader = new ClassReader(Files.readAllBytes(fs.getPath(file.toString())));
                                     var writer = new ClassNode();
-                                    reader.accept(writer, ClassReader.EXPAND_FRAMES);
+                                    reader.accept(writer, 0);
 
+                                    // cursed
                                     for (Field f : ClassNode.class.getFields()) {
                                         if (Modifier.isFinal(f.getModifiers())) continue;
                                         f.set(classNode, f.get(writer));
                                     }
 
                                     // dump to file
-                                    var cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                                    classNode.accept(cw);
-                                    var path = tempDir.resolve("dump").resolve(file.toString());
-                                    Files.createDirectories(path.getParent());
-                                    Files.write(path, cw.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                                    for (var i : classNode.innerClasses) {
-                                        var icw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-                                        i.accept(icw);
-                                        var ipath = tempDir.resolve("dump").resolve(i.name + ".class");
-                                        Files.createDirectories(ipath.getParent());
-                                        Files.write(ipath, icw.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                                    }
+//                                    if (Boolean.getBoolean("fukkit2.dump")) {
+//                                        var cw = new ClassWriter(0);
+//                                        classNode.accept(cw);
+//                                        var path = tempDir.resolve("dump").resolve(file.toString());
+//                                        Files.createDirectories(path.getParent());
+//                                        Files.write(path, cw.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+//                                    }
                                 } catch (IOException | IllegalAccessException e) {
                                     throw new RuntimeException(e);
                                 }
@@ -322,6 +326,29 @@ public abstract class AbstractBukkitPatcher {
         TinyRemapper remapper = remapJar(inputJar, intermediaryJar, "spigot", "official", "intermediary", "intermediary", null);
 
         // TODO: remap plugins to intermediary
+        Path intermediaryPlugins = fukkitDir.resolve("patched-" + mcVersion + "-intermediary-plugins");
+        Files.createDirectories(intermediaryPlugins);
+        // delete old plugins
+        try (Stream<Path> st = Files.list(intermediaryPlugins)) {
+            st.forEach(e -> {
+                try {
+                    Files.delete(e);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            });
+        }
+
+        Files.createDirectories(pluginFolderIn);
+
+        try (Stream<Path> st = Files.list(pluginFolderIn)) {
+            for (Path plugin : st.collect(Collectors.toList())) {
+                if (plugin.endsWith(".jar")) {
+                    Path intermediaryPlugin = intermediaryPlugins.resolve(plugin.getFileName());
+                    remapJar(plugin, intermediaryPlugin, "spigot", "official", "intermediary", "intermediary", remapper);
+                }
+            }
+        }
 
         remapper.finish();
 
@@ -332,12 +359,48 @@ public abstract class AbstractBukkitPatcher {
             remapper = remapJar(intermediaryJar, namedJar, "intermediary", "official", "intermediary", "named", null);
 
             // TODO: remap plugins to named
+            Path namedPlugins = fukkitDir.resolve("patched-" + mcVersion + "-named-plugins");
+            Files.createDirectories(namedPlugins);
+            // delete old plugins
+            try (Stream<Path> st = Files.list(namedPlugins)) {
+                st.forEach(e -> {
+                    try {
+                        Files.delete(e);
+                    } catch (IOException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                });
+            }
+
+            try (Stream<Path> st = Files.list(intermediaryPlugins)) {
+                for (Path plugin : st.collect(Collectors.toList())) {
+                    Path namedPlugin = namedPlugins.resolve(plugin.getFileName());
+                    remapJar(plugin, namedPlugin, "intermediary", "official", "intermediary", "named", remapper);
+                }
+            }
+
+            // overwrite the plugins folder
+            try (Stream<Path> st = Files.list(namedPlugins)) {
+                for (Path plugin : st.collect(Collectors.toList())) {
+                    Files.copy(plugin, pluginFolderIn.resolve(plugin.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
 
             remapper.finish();
 
             remappedBukkit = namedJar;
+            remappedPlugins = pluginFolderIn;
         } else {
+            // overwrite the plugins folder
+            try (Stream<Path> st = Files.list(intermediaryPlugins)) {
+                for (Path plugin : st.collect(Collectors.toList())) {
+                    Files.copy(plugin, pluginFolderIn.resolve(plugin.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+
+
             remappedBukkit = intermediaryJar;
+            remappedPlugins = pluginFolderIn;
         }
     }
 

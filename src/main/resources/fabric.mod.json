@@ -10,12 +10,6 @@
   "icon": "assets/fukkit2/icon.png",
   "environment": "*",
   "entrypoints": {
-    "client": [
-      "xyz.wagyourtail.fukkit2.client.Fukkit2Client"
-    ],
-    "main": [
-      "xyz.wagyourtail.fukkit2.Fukkit2"
-    ],
     "mm:early_risers": [
       "xyz.wagyourtail.fukkit2.FukkitEarlyRiser"
     ],
