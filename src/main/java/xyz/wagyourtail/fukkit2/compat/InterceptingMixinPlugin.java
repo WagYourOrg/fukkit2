@@ -93,73 +93,6 @@ public class InterceptingMixinPlugin extends EmptyMixinPlugin {
 		return nodes;
 	}
 
-	@Override
-	public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
-		ClassNode thisMixin = MixinUtils.Mixin.create(mixinInfo).getClassNode();
-
-		AnnotationNode interception = Annotations.getInvisible(thisMixin, InterceptingMixin.class);
-		if (interception == null) return; //Nothing to do for this particular Mixin
-
-		MixinUtils.Mixin interceptionMixin = findMixin(targetClassName, Annotations.getValue(interception, "value", true));
-
-		for (MethodNode method : thisMixin.methods) {
-			AnnotationNode surrogateNode = Annotations.getInvisible(method, PlacatingSurrogate.class);
-			AnnotationNode poundSandNode = Annotations.getInvisible(method, PoundSand.class);
-
-			if (surrogateNode != null || poundSandNode != null) {
-				Method realMethod = findShim(interceptionMixin, method, surrogateNode != null);
-				if (surrogateNode != null) {
-					Annotations.setInvisible(method, From.class, "method", method.name.concat(method.desc));
-					method.name = realMethod.getName(); //Mangle name to whatever Mixin is using for the real injection
-					method.invisibleAnnotations.remove(surrogateNode);
-					Annotations.setVisible(method, Surrogate.class);
-
-					String coercedDesc = coerceDesc(method);
-					if (coercedDesc != null) method.desc = coercedDesc;
-
-					assert Modifier.isStatic(method.access) == realMethod.isStatic();
-					targetClass.methods.add(method);
-				}
-
-				if (poundSandNode != null) {
-					try {
-						doPoundSand(getMethodNode(realMethod, interceptionMixin.getClassNode()), interceptionMixin, targetClass);
-					} catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-						throw new RuntimeException(e);
-					}
-				}
-			}
-		}
-	}
-
-	protected void doPoundSand(MethodNode realMethodNode, MixinUtils.Mixin interceptingMixin, ClassNode targetClass) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
-		throw new UnsupportedOperationException("PoundSand is not yet implemented");
-//		// get the target method
-//		AnnotationNode redirectNode = Annotations.getVisible(realMethodNode, Redirect.class);
-//		AnnotationNode injectNode = Annotations.getVisible(realMethodNode, Inject.class);
-//
-//		if (redirectNode == null && injectNode == null) {
-//			throw new IllegalStateException("Cannot find Redirect or Inject annotation for PoundSand method " + realMethodNode.name + realMethodNode.desc);
-//		}
-//
-//		if (redirectNode != null) {
-//			Map<String, Object> redirectValues = getAnnotationValues(redirectNode);
-//			List<String> methodValues = (List) redirectValues.get("method");
-//			List<MethodNode> targetNodes = getTargetNodes(methodValues, interceptingMixin, targetClass, null);
-//			for (MethodNode targetNode : targetNodes) {
-//				System.out.println("PoundSand: " + targetNode.name + targetNode.desc);
-//			}
-//		} else if (injectNode != null) {
-//			Map<String, Object> injectValues = getAnnotationValues(injectNode);
-//			List<String> methodValues = (List) injectValues.get("method");
-//			List<MethodNode> targetNodes = getTargetNodes(methodValues, interceptingMixin, targetClass, realMethodNode.desc);
-//			for (MethodNode targetNode : targetNodes) {
-//				System.out.println("PoundSand: " + targetNode.name + targetNode.desc);
-//			}
-//		}
-
-	}
-
 	protected static MixinUtils.Mixin findMixin(String targetClass, Collection<String> mixinTargets) {
 		mixinTargets = ImmutableSet.copyOf(mixinTargets);
 
@@ -277,21 +210,6 @@ public class InterceptingMixinPlugin extends EmptyMixinPlugin {
 								methodInsn.desc = replacedMethod.getDesc();
 							}
 						}
-					}
-				}
-
-				if (Annotations.getInvisible(method, PlacatingSurrogate.class) != null) {
-					it.remove(); //Don't actually need the method itself, just its contents
-					String origin = method.name.concat(method.desc);
-
-					Consumer<MethodNode> copier = surrogates.remove(origin);
-					if (copier != null) {
-						copier.accept(method);
-					} else {
-						surrogates.put(origin, realSurrogate -> {
-							realSurrogate.instructions = method.instructions;
-							realSurrogate.invisibleAnnotations.remove(Annotations.getInvisible(realSurrogate, From.class));
-						});
 					}
 				}
 			}

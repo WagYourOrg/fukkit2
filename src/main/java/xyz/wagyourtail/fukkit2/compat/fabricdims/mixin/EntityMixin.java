@@ -13,7 +13,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import xyz.wagyourtail.fukkit2.compat.InterceptingMixin;
 
 @Mixin({Entity.class})
-@InterceptingMixin("net/fabricmc/fabric/mixin/dimension/EntityMixin")
 public class EntityMixin {
     @Unique
     @Nullable

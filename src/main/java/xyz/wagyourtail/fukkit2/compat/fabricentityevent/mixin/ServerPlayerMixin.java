@@ -102,13 +102,4 @@ public abstract class ServerPlayerMixin extends Player {
     private boolean redirectDaySleepCheck2(Level world, BlockPos pos) {
         return redirectDaySleepCheck(world, pos);
     }
-
-    public Either<Player.BedSleepingProblem, Unit> trySleepYeet(BlockPos blockposition) {
-        Direction enumdirection = super.level.getBlockState(blockposition).getValue(HorizontalDirectionalBlock.FACING);
-        ((ServerPlayer) (Object) this).setRespawnPosition(super.level.dimension(), blockposition, enumdirection.toYRot(), false, false);
-        List<?> L = new ArrayList<>();
-        L.isEmpty();
-        super.level.isDay();
-        return null;
-    }
 }

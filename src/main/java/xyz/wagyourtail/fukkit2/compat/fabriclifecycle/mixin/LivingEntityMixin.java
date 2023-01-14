@@ -1,17 +1,11 @@
 package xyz.wagyourtail.fukkit2.compat.fabriclifecycle.mixin;
 
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 import xyz.wagyourtail.fukkit2.compat.InterceptingMixin;
-import xyz.wagyourtail.fukkit2.compat.PlacatingSurrogate;
 import xyz.wagyourtail.fukkit2.compat.Shim;
 
 import java.util.Map;
@@ -24,7 +18,6 @@ public class LivingEntityMixin {
         throw new AssertionError();
     }
 
-    @PlacatingSurrogate
     private void getEquipmentChanges(CallbackInfoReturnable<Map<EquipmentSlot, ItemStack>> cir, Map map, EquipmentSlot[] var2, int var3, EquipmentSlot equipmentSlot, ItemStack itemStack) {
         throw new AssertionError();
     }

@@ -1,6 +1,7 @@
 package xyz.wagyourtail.fukkit2;
 
 import com.chocohead.mm.api.ClassTinkerers;
+import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.impl.FabricLoaderImpl;
@@ -35,6 +36,7 @@ import java.util.zip.ZipOutputStream;
 
 public abstract class AbstractBukkitPatcher {
     protected Logger LOGGER = LoggerFactory.getLogger(getClass());
+    protected Set<String> patchedClasses = new HashSet<>();
 
     protected final String mcVersion;
     protected final String patchVersion;
@@ -78,7 +80,7 @@ public abstract class AbstractBukkitPatcher {
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                     return FileVisitResult.CONTINUE;
-                }
+                };
 
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -86,7 +88,9 @@ public abstract class AbstractBukkitPatcher {
                         if (FukkitEarlyRiser.class.getClassLoader().getResourceAsStream(file.toString()) != null) {
                             // idk why skipping this makes it work
                             if (file.toString().endsWith("EntityTypeTest.class")) return FileVisitResult.CONTINUE;
-                            ClassTinkerers.addTransformation(file.toString().replace(".class", ""), (classNode) -> {
+                            ClassTinkerers.addReplacement(file.toString().replace(".class", ""), (classNode) -> {
+                                patchedClasses.add(classNode.name);
+
                                 try (FileSystem fs = openZipFileSystem(remappedBukkit)) {
                                     var reader = new ClassReader(Files.readAllBytes(fs.getPath(file.toString())));
                                     var writer = new ClassNode();
@@ -608,5 +612,9 @@ public abstract class AbstractBukkitPatcher {
             }
 
         };
+    }
+
+    public Set<String> getPatchedClasses() {
+        return Set.copyOf(patchedClasses);
     }
 }

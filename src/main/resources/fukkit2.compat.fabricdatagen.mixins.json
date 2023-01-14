@@ -1,8 +1,0 @@
-{
-  "parent": "fukkit2.mixins.json",
-  "package": "xyz.wagyourtail.fukkit2.compat.fabricdatagen.mixin",
-  "plugin": "xyz.wagyourtail.fukkit2.compat.fabricdatagen.DatagenMixinPlugin",
-  "mixins": [
-    "MainMixin"
-  ]
-}

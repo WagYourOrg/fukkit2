@@ -1,9 +1,8 @@
 {
   "parent": "fukkit2.mixins.json",
   "package": "xyz.wagyourtail.fukkit2.compat.fabricentityevent.mixin",
-  "plugin": "xyz.wagyourtail.fukkit2.compat.fabricentityevent.EntityEventMixinPlugin",
+  "plugin": "xyz.wagyourtail.fukkit2.compat.InterceptingMixinPlugin",
   "mixins": [
-    "ServerPlayerMixin",
-    "LivingEntityMixin"
+    "ServerPlayerMixin"
   ]
 }

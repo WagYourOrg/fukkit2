@@ -1,21 +1,31 @@
 package xyz.wagyourtail.fukkit2;
 
+import com.google.gson.Gson;
+import net.bytebuddy.agent.ByteBuddyAgent;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
+import net.lenni0451.classtransform.TransformerManager;
+import net.lenni0451.classtransform.utils.tree.BasicClassProvider;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixins;
+import org.spongepowered.asm.mixin.transformer.ClassInfo;
+import xyz.wagyourtail.fukkit2.compat.MixinTransformer;
 
+import java.lang.instrument.Instrumentation;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 @SuppressWarnings("removal")
 public class FukkitEarlyRiser implements Runnable, PreLaunchEntrypoint {
-    private final Logger LOGGER = LoggerFactory.getLogger(FukkitEarlyRiser.class);
-    static AbstractBukkitPatcher patcher;
+    private static final Logger LOGGER = LoggerFactory.getLogger(FukkitEarlyRiser.class);
+    private static final Gson GSON = new Gson();
 
+    static AbstractBukkitPatcher patcher;
     @Override
     public void run() {
         // check if server side
@@ -36,12 +46,49 @@ public class FukkitEarlyRiser implements Runnable, PreLaunchEntrypoint {
             Files.createDirectories(temp);
             patcher = new PaperPatcher(mcVersion, paperVersion, fukkit, temp);
             patcher.patch();
-        } catch (Exception e) {
+
+            Map<String, ClassInfo> cache = (Map) FieldUtils.getDeclaredField(ClassInfo.class, "cache", true).get(null);
+            for (String s : patcher.getPatchedClasses()) {
+                cache.remove(s);
+            }
+
+            MixinTransformer.install();
+        } catch (Throwable e) {
             e.printStackTrace();
             System.exit(1);
         }
 
         forMods();
+    }
+
+    public static void forMods() {
+        for (ModContainer allMod : FabricLoader.getInstance().getAllMods()) {
+            switch (allMod.getMetadata().getId()) {
+                case "fabric-data-generation-api-v1":
+//                    System.out.println("Fukkit2: Patching fabric-data-generation-api-v1");
+                    break;
+                case "fabric-registry-sync-v0":
+                    System.out.println("Fukkit2: Patching fabric-registry-sync-v0");
+                    Mixins.addConfiguration("fukkit2.compat.fabricregsync.mixins.json");
+                    break;
+                case "fabric-dimensions-v1":
+                    System.out.println("Fukkit2: Patching fabric-dimensions-v1");
+                    Mixins.addConfiguration("fukkit2.compat.fabricdims.mixins.json");
+                    break;
+                case "fabric-screen-handler-api-v1":
+                    System.out.println("Fukkit2: Patching fabric-screen-handler-api-v1");
+                    Mixins.addConfiguration("fukkit2.compat.fabricscreenhandler.mixins.json");
+                    break;
+                case "fabric-entity-events-v1":
+                    System.out.println("Fukkit2: Patching fabric-entity-events-v1");
+                    Mixins.addConfiguration("fukkit2.compat.fabricentityevent.mixins.json");
+                    break;
+                case "fabric-lifecycle-events-v1":
+                    System.out.println("Fukkit2: Patching fabric-lifecycle-events-v1");
+                    //                    Mixins.addConfiguration("fukkit2.compat.fabriclifecycle.mixins.json");
+                    break;
+            }
+        }
     }
 
     @Override
@@ -53,38 +100,4 @@ public class FukkitEarlyRiser implements Runnable, PreLaunchEntrypoint {
         }
     }
 
-    public void forMods() {
-        for (ModContainer allMod : FabricLoader.getInstance().getAllMods()) {
-            switch (allMod.getMetadata().getId()) {
-//                case "fabric-gametest-api-v1":
-//                    LOGGER.info("Fukkit2: Patching fabric-gametest-api-v1");
-//                    Mixins.addConfiguration("fukkit.mixins.fabricgametest.json");
-//                    break;
-                case "fabric-data-generation-api-v1":
-                    LOGGER.info("Fukkit2: Patching fabric-data-generation-api-v1");
-                    Mixins.addConfiguration("fukkit2.compat.fabricdatagen.mixins.json");
-                    break;
-                case "fabric-registry-sync-v0":
-                    LOGGER.info("Fukkit2: Patching fabric-registry-sync-v0");
-                    Mixins.addConfiguration("fukkit2.compat.fabricregsync.mixins.json");
-                    break;
-                case "fabric-dimensions-v1":
-                    LOGGER.info("Fukkit2: Patching fabric-dimensions-v1");
-                    Mixins.addConfiguration("fukkit2.compat.fabricdims.mixins.json");
-                    break;
-                case "fabric-screen-handler-api-v1":
-                    LOGGER.info("Fukkit2: Patching fabric-screen-handler-api-v1");
-                    Mixins.addConfiguration("fukkit2.compat.fabricscreenhandler.mixins.json");
-                    break;
-                case "fabric-entity-events-v1":
-                    LOGGER.info("Fukkit2: Patching fabric-entity-events-v1");
-                    Mixins.addConfiguration("fukkit2.compat.fabricentityevent.mixins.json");
-                    break;
-                case "fabric-lifecycle-events-v1":
-                    LOGGER.info("Fukkit2: Patching fabric-lifecycle-events-v1");
-                    Mixins.addConfiguration("fukkit2.compat.fabriclifecycle.mixins.json");
-                    break;
-            }
-        }
-    }
 }

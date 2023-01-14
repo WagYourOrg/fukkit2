@@ -16,7 +16,6 @@ import xyz.wagyourtail.fukkit2.compat.InterceptingMixin;
 import java.util.Map;
 
 @Mixin(MappedRegistry.class)
-@Pseudo
 @InterceptingMixin("net/fabricmc/fabric/mixin/registry/sync/SimpleRegistryMixin")
 public class MappedRegistryMixin {
 
@@ -25,67 +24,7 @@ public class MappedRegistryMixin {
     private Reference2IntOpenHashMap<Object> e;
 
     @Unique
-    private Object2IntMap<Object> toIdPatched;
-
-    @Inject(method = "<init>*", at = @At("RETURN"))
-    private void onInit(CallbackInfo ci) {
-        this.toIdPatched = new Object2IntMap<>() {
-            @Override
-            public int size() {
-                return e.size();
-            }
-
-            @Override
-            public void defaultReturnValue(int i) {
-                e.defaultReturnValue(i);
-            }
-
-            @Override
-            public int defaultReturnValue() {
-                return e.defaultReturnValue();
-            }
-
-            @Override
-            public ObjectSet<Entry<Object>> object2IntEntrySet() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public ObjectSet<Object> keySet() {
-                return new ObjectOpenHashSet<>(e.keySet());
-            }
-
-            @Override
-            public IntCollection values() {
-                return e.values();
-            }
-
-            @Override
-            public boolean containsKey(Object o) {
-                return e.containsKey(o);
-            }
-
-            @Override
-            public boolean containsValue(int i) {
-                return e.containsValue(i);
-            }
-
-            @Override
-            public int getInt(Object o) {
-                return e.getInt(o);
-            }
-
-            @Override
-            public boolean isEmpty() {
-                return e.isEmpty();
-            }
-
-            @Override
-            public void putAll(@NotNull Map<?, ? extends Integer> m) {
-                e.putAll(m);
-            }
-        };
-    }
+    private Object2IntMap<Object> field_26683;
 
 
 }
