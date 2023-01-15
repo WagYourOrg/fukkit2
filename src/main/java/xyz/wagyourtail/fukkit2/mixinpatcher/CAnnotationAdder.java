@@ -23,16 +23,20 @@ public class CAnnotationAdder extends RemovingTargetAnnotationHandler<CAddAnnota
     @Override
     public void transform(CAddAnnotation annotation, TransformerManager transformerManager, IClassProvider classProvider, Map<String, IInjectionTarget> injectionTargets, ClassNode transformedClass, ClassNode transformer, MethodNode transformerMethod, MethodNode target) {
         List<String> annotations = Arrays.stream(annotation.annotation()).map(e -> "L" + e.getCanonicalName().replace(".", "/") + ";").collect(Collectors.toList());
-        for (AnnotationNode node : transformerMethod.visibleAnnotations) {
-            if (annotations.contains(node.desc)) {
-                target.visibleAnnotations.add(node);
-                annotations.remove(node.desc);
+        if (transformerMethod.visibleAnnotations != null) {
+            for (AnnotationNode node : transformerMethod.visibleAnnotations) {
+                if (annotations.contains(node.desc)) {
+                    target.visibleAnnotations.add(node);
+                    annotations.remove(node.desc);
+                }
             }
         }
-        for (AnnotationNode node : transformerMethod.invisibleAnnotations) {
-            if (annotations.contains(node.desc)) {
-                target.invisibleAnnotations.add(node);
-                annotations.remove(node.desc);
+        if (transformerMethod.invisibleAnnotations != null) {
+            for (AnnotationNode node : transformerMethod.invisibleAnnotations) {
+                if (annotations.contains(node.desc)) {
+                    target.invisibleAnnotations.add(node);
+                    annotations.remove(node.desc);
+                }
             }
         }
         if (annotations.size() > 0) {
@@ -43,16 +47,20 @@ public class CAnnotationAdder extends RemovingTargetAnnotationHandler<CAddAnnota
     @Override
     public void transform(CAddAnnotation annotation, TransformerManager transformerManager, IClassProvider classProvider, Map<String, IInjectionTarget> injectionTargets, ClassNode transformedClass, ClassNode transformer, FieldNode transformerMethod, FieldNode target) {
         List<String> annotations = Arrays.stream(annotation.annotation()).map(e -> "L" + e.getCanonicalName().replace(".", "/") + ";").collect(Collectors.toList());
-        for (AnnotationNode node : transformerMethod.visibleAnnotations) {
-            if (annotations.contains(node.desc)) {
-                target.visibleAnnotations.add(node);
-                annotations.remove(node.desc);
+        if  (transformerMethod.visibleAnnotations != null) {
+            for (AnnotationNode node : transformerMethod.visibleAnnotations) {
+                if (annotations.contains(node.desc)) {
+                    target.visibleAnnotations.add(node);
+                    annotations.remove(node.desc);
+                }
             }
         }
-        for (AnnotationNode node : transformerMethod.invisibleAnnotations) {
-            if (annotations.contains(node.desc)) {
-                target.invisibleAnnotations.add(node);
-                annotations.remove(node.desc);
+        if (transformerMethod.invisibleAnnotations != null) {
+            for (AnnotationNode node : transformerMethod.invisibleAnnotations) {
+                if (annotations.contains(node.desc)) {
+                    target.invisibleAnnotations.add(node);
+                    annotations.remove(node.desc);
+                }
             }
         }
         if (annotations.size() > 0) {

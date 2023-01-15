@@ -36,7 +36,6 @@ public class SimpleRegistryMixinTransform {
     private Reference2IntOpenHashMap<Object> e;
 
     @CShadow
-    @Unique
     private Object2IntMap<Object> field_26683;
 
     @CRemoveAnotation(value = "field_26683:Lit/unimi/dsi/fastutil/objects/Object2IntMap;", annotation = Shadow.class)
@@ -44,10 +43,11 @@ public class SimpleRegistryMixinTransform {
 
 
     @CAddAnnotation(value = "field_26683:Lit/unimi/dsi/fastutil/objects/Object2IntMap;", annotation = Unique.class)
+    @Unique
     private Object matter;
 
 
-    @Inject(method = "<init>*", at = @At("RETURN"))
+    @Inject(method = "<init>(Lnet/minecraft/resources/ResourceKey;Lcom/mojang/serialization/Lifecycle;Z)V", at = @At("RETURN"))
     private void onInit(CallbackInfo ci) {
         this.field_26683 = new ReferenceMapWrapper(this.e);
     }

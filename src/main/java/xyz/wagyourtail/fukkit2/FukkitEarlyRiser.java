@@ -9,6 +9,8 @@ import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 import net.lenni0451.classtransform.TransformerManager;
 import net.lenni0451.classtransform.utils.tree.BasicClassProvider;
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.commons.lang3.reflect.MethodUtils;
+import org.objectweb.asm.tree.ClassNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixins;
@@ -16,6 +18,8 @@ import org.spongepowered.asm.mixin.transformer.ClassInfo;
 import xyz.wagyourtail.fukkit2.compat.MixinTransformer;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -45,12 +49,23 @@ public class FukkitEarlyRiser implements Runnable, PreLaunchEntrypoint {
         try {
             Files.createDirectories(temp);
             patcher = new PaperPatcher(mcVersion, paperVersion, fukkit, temp);
+
+            Method m = ClassInfo.class.getDeclaredMethod("fromClassNode", ClassNode.class);
+            m.setAccessible(true);
+
+            // fix mixin class info to match new class data post-transform
+            Map<String, ClassInfo> cache = (Map) FieldUtils.getDeclaredField(ClassInfo.class, "cache", true).get(null);
+            patcher.setOnTransform(c -> {
+                cache.remove(c.name);
+                try {
+                    m.invoke(null, c);
+                } catch (Throwable e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             patcher.patch();
 
-            Map<String, ClassInfo> cache = (Map) FieldUtils.getDeclaredField(ClassInfo.class, "cache", true).get(null);
-            for (String s : patcher.getPatchedClasses()) {
-                cache.remove(s);
-            }
 
             MixinTransformer.install();
         } catch (Throwable e) {

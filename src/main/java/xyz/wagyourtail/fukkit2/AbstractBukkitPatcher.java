@@ -30,14 +30,13 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipOutputStream;
 
 public abstract class AbstractBukkitPatcher {
     protected Logger LOGGER = LoggerFactory.getLogger(getClass());
-    protected Set<String> patchedClasses = new HashSet<>();
-
     protected final String mcVersion;
     protected final String patchVersion;
 
@@ -50,6 +49,8 @@ public abstract class AbstractBukkitPatcher {
     private MemoryMappingTree mappings;
 
     protected String entrypoint;
+
+    protected Consumer<ClassNode> onTransform;
 
     public AbstractBukkitPatcher(String mcVersion, String patchVersion, Path fukkitDir, Path tempDir) {
         this.mcVersion = mcVersion;
@@ -74,6 +75,10 @@ public abstract class AbstractBukkitPatcher {
 
     public abstract void patch() throws Exception;
 
+    public void setOnTransform(Consumer<ClassNode> onTransform) {
+        this.onTransform = onTransform;
+    }
+
     protected void patchRuntime() throws IOException {
         try (FileSystem fs = openZipFileSystem(remappedBukkit)) {
             Files.walkFileTree(fs.getPath(""), new FileVisitor<Path>() {
@@ -89,7 +94,6 @@ public abstract class AbstractBukkitPatcher {
                             // idk why skipping this makes it work
                             if (file.toString().endsWith("EntityTypeTest.class")) return FileVisitResult.CONTINUE;
                             ClassTinkerers.addReplacement(file.toString().replace(".class", ""), (classNode) -> {
-                                patchedClasses.add(classNode.name);
 
                                 try (FileSystem fs = openZipFileSystem(remappedBukkit)) {
                                     var reader = new ClassReader(Files.readAllBytes(fs.getPath(file.toString())));
@@ -101,6 +105,8 @@ public abstract class AbstractBukkitPatcher {
                                         if (Modifier.isFinal(f.getModifiers())) continue;
                                         f.set(classNode, f.get(writer));
                                     }
+
+                                    if (onTransform != null) onTransform.accept(classNode);
 
                                     // dump to file
 //                                    if (Boolean.getBoolean("fukkit2.dump")) {
@@ -536,14 +542,26 @@ public abstract class AbstractBukkitPatcher {
                 fallbackSrcId = fromId;
             }
 
-            LOGGER.info("Remapping " + srcName + " to " + targetName + " with fallbacks " + fallbackSrc + " and " + fallbackTarget);
+            LOGGER.info("Remapping " + srcName + " to " + targetName + " with fallbacks " + fallbackSrc + " and " +
+                fallbackTarget);
 
             for (MappingTree.ClassMapping classDef : mappings.getClasses()) {
-                var fromClassName = Optional.ofNullable(classDef.getName(fromId)).orElse(classDef.getName(fallbackSrcId));
-                var toClassName = Optional.ofNullable(classDef.getName(toId)).orElse(classDef.getName(fallbackTargetId));
+                var fromClassName = Optional.ofNullable(classDef.getName(fromId))
+                    .orElse(classDef.getName(fallbackSrcId));
+                var toClassName = Optional.ofNullable(classDef.getName(toId))
+                    .orElse(classDef.getName(fallbackTargetId));
 
                 if (fromClassName != null && fromClassName.contains("$")) {
-                    toClassName = fixInnerClassName(mappings, fromId, fallbackSrcId, fallbackTargetId, toId, classDef, fromClassName, toClassName);
+                    toClassName = fixInnerClassName(
+                        mappings,
+                        fromId,
+                        fallbackSrcId,
+                        fallbackTargetId,
+                        toId,
+                        classDef,
+                        fromClassName,
+                        toClassName
+                    );
                 }
 
                 if (toClassName == null) {
@@ -578,7 +596,10 @@ public abstract class AbstractBukkitPatcher {
 
                     if (fromFieldName != null) {
                         LOGGER.debug("Remapping field " + fromFieldName + " to " + toFieldName);
-                        acceptor.acceptField(memberOf(fromClassName, fromFieldName, field.getDesc(fromId)), toFieldName);
+                        acceptor.acceptField(
+                            memberOf(fromClassName, fromFieldName, field.getDesc(fromId)),
+                            toFieldName
+                        );
                     }
                     if (fromClassName.endsWith("ColorableAgeableListModel")) {
                         LOGGER.info("Remapping field " + fromFieldName + " to " + toFieldName);
@@ -586,9 +607,12 @@ public abstract class AbstractBukkitPatcher {
                 }
 
                 for (MappingTree.MethodMapping method : classDef.getMethods()) {
-                    var fromMethodName = Optional.ofNullable(method.getName(fromId)).orElse(method.getName(fallbackSrcId));
-                    var toMethodName = Optional.ofNullable(method.getName(toId)).orElse(method.getName(fallbackTargetId));
-                    var fromMethodDesc = Optional.ofNullable(method.getDesc(fromId)).orElse(method.getDesc(fallbackSrcId));
+                    var fromMethodName = Optional.ofNullable(method.getName(fromId))
+                        .orElse(method.getName(fallbackSrcId));
+                    var toMethodName = Optional.ofNullable(method.getName(toId))
+                        .orElse(method.getName(fallbackTargetId));
+                    var fromMethodDesc = Optional.ofNullable(method.getDesc(fromId))
+                        .orElse(method.getDesc(fallbackSrcId));
 
                     if (fromMethodName == null) {
                         LOGGER.debug("Found no source name for " + method);
@@ -612,9 +636,5 @@ public abstract class AbstractBukkitPatcher {
             }
 
         };
-    }
-
-    public Set<String> getPatchedClasses() {
-        return Set.copyOf(patchedClasses);
     }
 }
