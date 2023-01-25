@@ -113,6 +113,14 @@ public class MixinTransformer {
                     System.out.println("Fukkit2: Patching fabric-lifecycle-events-v1");
                     addTransformerList(transformer, "fabric-lifecycle-events-v1.classtransform");
                     break;
+                case "fabric-transfer-api-v1":
+                    System.out.println("Fukkit2: Patching fabric-transfer-api-v1");
+                    addTransformerList(transformer, "fabric-transfer-api-v1.classtransform");
+                    break;
+                case "fabric-item-api-v1":
+                    System.out.println("Fukkit2: Patching fabric-item-api-v1");
+                    addTransformerList(transformer, "fabric-item-api-v1.classtransform");
+                    break;
             }
         }
     }

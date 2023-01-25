@@ -1,2 +1,2 @@
-xyz.wagyourtail.fukkit2.compat.fabricentityevent.transform.LivingEntityMixinTransform
-xyz.wagyourtail.fukkit2.compat.fabricentityevent.transform.ServerPlayerMixinTransform
+xyz.wagyourtail.fukkit2.compat.fabric_entity_event_v1.transform.LivingEntityMixinTransform
+xyz.wagyourtail.fukkit2.compat.fabric_entity_event_v1.transform.ServerPlayerMixinTransform

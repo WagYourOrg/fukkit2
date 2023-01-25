@@ -14,9 +14,9 @@ import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MappingTreeView;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.tinyremapper.*;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.*;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.MethodNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,64 +80,99 @@ public abstract class AbstractBukkitPatcher {
     }
 
     protected void patchRuntime() throws IOException {
+        Path fukkitExtra = fukkitDir.resolve("bukkit-extra-" + mcVersion + "-" + patchVersion + ".jar");
         try (FileSystem fs = openZipFileSystem(remappedBukkit)) {
-            Files.walkFileTree(fs.getPath(""), new FileVisitor<Path>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                    return FileVisitResult.CONTINUE;
-                };
-
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (file.toString().endsWith(".class")) {
-                        if (FukkitEarlyRiser.class.getClassLoader().getResourceAsStream(file.toString()) != null) {
-                            // idk why skipping this makes it work
-                            if (file.toString().endsWith("EntityTypeTest.class")) return FileVisitResult.CONTINUE;
-                            ClassTinkerers.addReplacement(file.toString().replace(".class", ""), (classNode) -> {
-
-                                try (FileSystem fs = openZipFileSystem(remappedBukkit)) {
-                                    var reader = new ClassReader(Files.readAllBytes(fs.getPath(file.toString())));
-                                    var writer = new ClassNode();
-                                    reader.accept(writer, 0);
-
-                                    // cursed
-                                    for (Field f : ClassNode.class.getFields()) {
-                                        if (Modifier.isFinal(f.getModifiers())) continue;
-                                        f.set(classNode, f.get(writer));
-                                    }
-
-                                    if (onTransform != null) onTransform.accept(classNode);
-
-                                    // dump to file
-//                                    if (Boolean.getBoolean("fukkit2.dump")) {
-//                                        var cw = new ClassWriter(0);
-//                                        classNode.accept(cw);
-//                                        var path = tempDir.resolve("dump").resolve(file.toString());
-//                                        Files.createDirectories(path.getParent());
-//                                        Files.write(path, cw.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-//                                    }
-                                } catch (IOException | IllegalAccessException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            });
-                        } else {
-                            ClassTinkerers.define(file.toString().replace(".class", ""), Files.readAllBytes(file));
-                        }
+            Set<Path> toReplace = new HashSet<>();
+            try (FileSystem fukkitExtraFS = openZipFileSystem(fukkitExtra, Map.of("mutable", true, "create", true))) {
+                Files.walkFileTree(fs.getPath(""), new FileVisitor<>() {
+                    @Override
+                    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                        return FileVisitResult.CONTINUE;
                     }
-                    return FileVisitResult.CONTINUE;
-                }
 
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                    return FileVisitResult.CONTINUE;
-                }
+                    ;
 
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-                    return FileVisitResult.CONTINUE;
-                }
-            });
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                        if (file.toString().endsWith(".class")) {
+                            if (FukkitEarlyRiser.class.getClassLoader().getResourceAsStream(file.toString()) != null) {
+                                // idk why skipping this makes it work
+                                if (file.toString().endsWith("EntityTypeTest.class")) {
+                                    return FileVisitResult.CONTINUE;
+                                }
+                                toReplace.add(file);
+                            } else {
+                                Path classPath = fukkitExtraFS.getPath(file.toString());
+                                Files.createDirectories(classPath.getParent());
+                                Files.copy(file, classPath, StandardCopyOption.REPLACE_EXISTING);
+                            }
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+            }
+            ClassTinkerers.addURL(fukkitExtra.toUri().toURL());
+
+            for (Path replace : toReplace) {
+                replace(replace);
+            }
         }
+    }
+
+    private void replace(Path file) throws IOException {
+        byte[] bytes = Files.readAllBytes(file);
+        ClassTinkerers.addReplacement(file.toString().replace(".class", ""), (classNode) -> {
+            try {
+                var reader = new ClassReader(bytes);
+                var node = new ClassNode();
+                reader.accept(node, 0);
+
+                // cursed
+                for (Field f : ClassNode.class.getFields()) {
+                    if (Modifier.isFinal(f.getModifiers())) {
+                        continue;
+                    }
+                    f.set(classNode, f.get(node));
+                }
+
+                //                                    List<MethodNode> methods = new ArrayList<>(classNode.methods);
+                //                                    classNode.methods.clear();
+                //                                    for (MethodNode m : methods) {
+                //                                        var visitor = new LabelFixer(Opcodes.ASM9, classNode.visitMethod(m.access, m.name, m.desc, m.signature, m.exceptions.toArray(new String[0])));
+                //                                        m.accept(visitor);
+                //                                    }
+
+                if (onTransform != null) {
+                    onTransform.accept(classNode);
+                }
+
+                // dump to file
+                if (Boolean.getBoolean("fukkit2.dump")) {
+                    var cw = new ClassWriter(0);
+                    classNode.accept(cw);
+                    var path = tempDir.resolve("dump").resolve(file.toString());
+                    Files.createDirectories(path.getParent());
+                    Files.write(
+                        path,
+                        cw.toByteArray(),
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.TRUNCATE_EXISTING
+                    );
+                }
+            } catch (IOException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     protected void createServerExtra() throws IOException {
@@ -637,4 +672,60 @@ public abstract class AbstractBukkitPatcher {
 
         };
     }
+
+//    private static class LabelFixer extends MethodVisitor {
+//
+//        private final Map<Label, Label> labelMap = new HashMap<>();
+//
+//        protected LabelFixer(int api, MethodVisitor methodVisitor) {
+//            super(api, methodVisitor);
+//        }
+//
+//        protected Label recompute(Label label) {
+//            return labelMap.computeIfAbsent(label, l -> new Label());
+//        }
+//
+//        @Override
+//        public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
+//            super.visitLocalVariable(name, descriptor, signature, recompute(start), recompute(end), index);
+//        }
+//
+//        @Override
+//        public AnnotationVisitor visitLocalVariableAnnotation(int typeRef, TypePath typePath, Label[] start, Label[] end, int[] index, String descriptor, boolean visible) {
+//            return super.visitLocalVariableAnnotation(typeRef, typePath, Arrays.stream(start).map(this::recompute).toArray(Label[]::new), Arrays.stream(end).map(this::recompute).toArray(Label[]::new), index, descriptor, visible);
+//        }
+//
+//        @Override
+//        public void visitFrame(int type, int numLocal, Object[] local, int numStack, Object[] stack) {
+//            super.visitFrame(type, numLocal, local, numStack, stack);
+//        }
+//
+//        @Override
+//        public void visitLabel(Label label) {
+//            super.visitLabel(recompute(label));
+//        }
+//
+//        @Override
+//        public void visitJumpInsn(int opcode, Label label) {
+//            super.visitJumpInsn(opcode, recompute(label));
+//        }
+//
+//        @Override
+//        public void visitLineNumber(int line, Label start) {
+//            super.visitLineNumber(line, recompute(start));
+//        }
+//
+//        @Override
+//        public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+//            super.visitTryCatchBlock(recompute(start), recompute(end), recompute(handler), type);
+//        }
+//
+//        @Override
+//        public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
+//            super.visitLookupSwitchInsn(recompute(dflt), keys, Arrays.stream(labels).map(this::recompute).toArray(Label[]::new));
+//        }
+//
+//    }
+
+
 }

@@ -1,2 +1,2 @@
-xyz.wagyourtail.fukkit2.compat.fabricregistrysync.transform.BootstrapMixinTransform
-xyz.wagyourtail.fukkit2.compat.fabricregistrysync.transform.SimpleRegistryMixinTransform
+xyz.wagyourtail.fukkit2.compat.fabric_registry_sync_v0.transform.BootstrapMixinTransform
+xyz.wagyourtail.fukkit2.compat.fabric_registry_sync_v0.transform.SimpleRegistryMixinTransform

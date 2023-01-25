@@ -1,6 +1,6 @@
 {
   "parent": "fukkit2.mixins.json",
-  "package": "xyz.wagyourtail.fukkit2.compat.fabricdims.mixin",
+  "package": "xyz.wagyourtail.fukkit2.compat.fabric_dimensions_v1.mixin",
   "mixins": [
     "EntityMixin",
     "ServerPlayerMixin"

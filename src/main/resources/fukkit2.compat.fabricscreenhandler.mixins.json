@@ -1,7 +1,7 @@
 {
   "parent": "fukkit2.mixins.json",
-  "package": "xyz.wagyourtail.fukkit2.compat.fabricscreenhandle.mixin",
-  "plugin": "xyz.wagyourtail.fukkit2.compat.fabricscreenhandle.ScreenHandleMixinPlugin",
+  "package": "xyz.wagyourtail.fukkit2.compat.fabric_screen_handler_api_v1.mixin",
+  "plugin": "xyz.wagyourtail.fukkit2.compat.fabric_screen_handler_api_v1.ScreenHandleMixinPlugin",
   "mixins": [
     "ServerPlayerMixin"
   ]

@@ -1,1 +1,2 @@
-xyz.wagyourtail.fukkit2.compat.fabriclifecycle.transform.LivingEntityMixinTransform
+xyz.wagyourtail.fukkit2.compat.fabric_lifecycle_events_v1.transform.LivingEntityMixinTransform
+xyz.wagyourtail.fukkit2.compat.fabric_lifecycle_events_v1.transform.WorldChunkMixinTransform

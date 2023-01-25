@@ -79,9 +79,6 @@ public class FukkitEarlyRiser implements Runnable, PreLaunchEntrypoint {
     public static void forMods() {
         for (ModContainer allMod : FabricLoader.getInstance().getAllMods()) {
             switch (allMod.getMetadata().getId()) {
-                case "fabric-data-generation-api-v1":
-//                    System.out.println("Fukkit2: Patching fabric-data-generation-api-v1");
-                    break;
                 case "fabric-registry-sync-v0":
                     System.out.println("Fukkit2: Patching fabric-registry-sync-v0");
                     Mixins.addConfiguration("fukkit2.compat.fabricregsync.mixins.json");
@@ -97,10 +94,6 @@ public class FukkitEarlyRiser implements Runnable, PreLaunchEntrypoint {
                 case "fabric-entity-events-v1":
                     System.out.println("Fukkit2: Patching fabric-entity-events-v1");
                     Mixins.addConfiguration("fukkit2.compat.fabricentityevent.mixins.json");
-                    break;
-                case "fabric-lifecycle-events-v1":
-                    System.out.println("Fukkit2: Patching fabric-lifecycle-events-v1");
-                    //                    Mixins.addConfiguration("fukkit2.compat.fabriclifecycle.mixins.json");
                     break;
             }
         }
